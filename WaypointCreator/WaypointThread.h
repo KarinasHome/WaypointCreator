@@ -39,6 +39,10 @@ class WaypointThread
 
 	WaypointCreationData m_WaypointData;
 	std::vector<waypoint*> m_WaypointVector;
+	std::vector<dsf_polygon> m_ForestVector;
+	std::vector<dsf_polygon> m_BeachVector;
+	std::vector<dsf_polygon> m_UrbanVector;
+	std::vector<dsf_polygon> m_WaterVector;
 	CListBox& m_OutputList;
 
 	double m_MPerLat = HRM_INV;
@@ -52,6 +56,10 @@ class WaypointThread
 
 	int m_DemWidth = 2001;
 	int m_DemHeight = 2001;
+
+	bool m_TerrainDataFound = false;
+
+	PolygonDef m_PolygonDefinitions[MAX_POLYGON_DEF];
 
 
 public:

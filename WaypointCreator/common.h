@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #define HRM_INV -1000
+#define MAX_POLYGON_DEF 1000
 
 extern std::recursive_mutex outputListSharedMutex;
 
@@ -16,6 +17,23 @@ namespace WaypointCreator
 	const int LonMin = -180;
 	const int LonMax = 180;
 }
+
+enum PolygonDef
+{
+	Invalid,
+	Object,
+	Facade,
+	Forest,
+	Beach,
+	Net,
+	Lin,
+	Pol,
+	String,
+	AutogenBlock,
+	AutogenString,
+	Water
+};
+
 
 struct waypoint
 {
@@ -57,6 +75,27 @@ struct urban_field
 	std::vector<point> urban_polygon_points;
 	std::vector<street_section> urban_street_sections;
 	std::vector<street_junction> urban_street_junctions;
+};
+
+struct sar_field_big
+{
+	bool has_terrain = false;
+	bool is_usable = true;
+
+	double latitude = HRM_INV;
+	double logitude = HRM_INV;
+
+	float elevation = 0;
+};
+
+struct polygon_winding
+{
+	std::vector<point> polygon_points;
+};
+
+struct dsf_polygon
+{
+	std::vector<polygon_winding> polygon_windings;
 };
 
 inline void writeOutput(std::string outputTextIn, CListBox& outputListIn)
