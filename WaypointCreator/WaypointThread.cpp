@@ -1,5 +1,8 @@
 #include "pch.h"
 #include "WaypointThread.h"
+#define _USE_MATH_DEFINES
+#include <math.h>
+#include <algorithm>
 
 WaypointThread::WaypointThread(WaypointCreationData waypointDataIn, CListBox &outputList) :
 	m_OutputList(outputList)
@@ -64,7 +67,7 @@ void WaypointThread::RunComputation()
 				command = "DSFTool --dsf2text \"" + dsf_work_dir + "out\\" + waypoint_filename + ".dsf\" \"" + dsf_work_dir + "out\\" + waypoint_filename + ".txt\"";
 				system(command.c_str());
 
-				AnalyzeFile("\"" + dsf_work_dir + "out\\" + waypoint_filename + ".txt\"");
+				AnalyzeFile("" + dsf_work_dir + "out\\" + waypoint_filename + ".txt");
 
 			}
 			else
@@ -77,12 +80,153 @@ void WaypointThread::RunComputation()
 			
 		}
 
+		
+		
+
+		
+
 		//Nicht vergessen: Extrahiertes DSF File wieder löschen
+	}
+	std::string fms_waypoint_filename = "";
+
+	fms_waypoint_filename += index_lat < 0 ? "-" : "+";
+	if ((index_lat < 10) && (index_lat > -10)) fms_waypoint_filename += "0";
+	fms_waypoint_filename += std::to_string(abs(index_lat));
+
+	fms_waypoint_filename += index_lon < 0 ? "-" : "+";
+	if ((index_lon < 100) && (index_lon > -100)) fms_waypoint_filename += "0";
+	if ((index_lon < 10) && (index_lon > -10)) fms_waypoint_filename += "0";
+	fms_waypoint_filename += std::to_string(abs(index_lon));
+
+	if (m_WaypointData.m_StreetMissions == true) AnalyzeStreetWaypoints(hrm_path + "street_" + fms_waypoint_filename + ".fms");
+
+
+}
+
+
+void WaypointThread::AnalyzeStreetWaypoints(std::string fms_filename)
+{
+	
+
+	if (m_StreetWaypointVector.size() > 0)
+	{
+
+		writeOutput("StreetWaypointGeneration: " + fms_filename, m_OutputList);
+
+		std::ofstream fms_file;
+		fms_file.open(fms_filename);
+
+		if (fms_file.is_open())
+		{
+			fms_file << "I" << std::endl;
+			fms_file << "1100 Version" << std::endl;
+			fms_file << "CYCLE " << 1809 << std::endl;
+			fms_file << "DEP " << std::endl;
+			fms_file << "DES " << std::endl;
+			fms_file << "NUMENR 3" << std::endl;
+
+			fms_file.precision(9);
+
+			int step_size = m_StreetWaypointVector.size() / m_MaxWaypoints;
+			if (step_size <= 0) step_size = 1;
+
+			for (int index = 0; index < m_StreetWaypointVector.size(); index += step_size)
+			{
+				waypoint* p_way = m_StreetWaypointVector[index];
+				fms_file << "28 " << p_way->name << " DEP 25000.000000 " << p_way->latitude << " " << p_way->longitude << std::endl;
+				p_way->name += "_HEAD";
+				fms_file << "28 " << p_way->name << " DEP 25000.000000 " << p_way->latitude_head << " " << p_way->longitude_head << std::endl;
+				//p_way->name += "_2";
+				//fms_file << "28 " << p_way->name << " DEP 25000.000000 " << p_way->latitude_head2 << " " << p_way->longitude_head2 << std::endl;
+			}
+
+			fms_file.close();
+		}
+	}
+	else
+	{
+		writeOutput("No Streets found: " + fms_filename, m_OutputList);
+	}
+}
+
+double WaypointThread::calc_distance_m(double lat1, double long1, double lat2, double long2)
+{
+	lat1 = lat1 * M_PI / 180;
+	long1 = long1 * M_PI / 180;
+	lat2 = lat2 * M_PI / 180;
+	long2 = long2 * M_PI / 180;
+
+	double rEarth = 6372797;
+
+	double dlat = lat2 - lat1;
+	double dlong = long2 - long1;
+
+	double x1 = sin(dlat / 2);
+	double x2 = cos(lat1);
+	double x3 = cos(lat2);
+	double x4 = sin(dlong / 2);
+
+	double x5 = x1 * x1;
+	double x6 = x2 * x3 * x4 * x4;
+
+	double temp1 = x5 + x6;
+
+	double y1 = sqrt(temp1);
+	double y2 = sqrt(1.0 - temp1);
+
+	double temp2 = 2 * atan2(y1, y2);
+
+	double range_m = temp2 * rEarth;
+
+	return range_m;
+}
+
+void WaypointThread::CheckStreetWaypoint(double lat1, double long1, double lat2, double long2, int sub_type)
+{
+	if (lat1 == HRM_INV) return;
+	if (lat2 == HRM_INV) return;
+	if (long1 == HRM_INV) return;
+	if (long2 == HRM_INV) return;
+
+	if ((m_MPerLat == HRM_INV) || (m_MPerLon == HRM_INV))
+	{
+		m_MPerLat = abs(calc_distance_m(lat1, long1, lat1 + 1.0, long1));
+		m_MPerLon = abs(calc_distance_m(lat1, long1, lat1, long1 + 1.0));
+	}
+
+	//if ((sub_type != 50) && (sub_type != 40) && (sub_type != 30) && (sub_type != 20)) return;
+	if ((sub_type > 40) || (sub_type <= 20)) return;
+
+	double delta_lat = abs(lat1 - lat2) * m_MPerLat;
+	double delta_long = abs(long1 - long2) * m_MPerLon;
+
+	if ((delta_lat > m_MinDist) || (delta_long > m_MinDist))
+	{
+		waypoint* p_way = new waypoint();
+
+		p_way->name = "WP_" + std::to_string(sub_type) + "_" + std::to_string(m_WIndex++);
+		p_way->latitude = ((lat1 + lat2) / 2.0);
+
+		p_way->longitude = ((long1 + long2) / 2.0);
+
+		p_way->latitude_head = lat1;
+		p_way->longitude_head = long1;
+		p_way->latitude_head2 = lat2;
+		p_way->longitude_head2 = long2;
+
+		m_StreetWaypointVector.push_back(p_way);
 	}
 }
 
 void WaypointThread::AnalyzeFile(std::string filename)
 {
+	if (m_TerrainDataFound == true)
+	{
+		writeOutput("After Terrain -> Skipped: " + filename, m_OutputList);
+		return;
+	}
+
+
 	writeOutput("Analyzing: " + filename, m_OutputList);
 
 	std::ifstream dsf_file(filename);
@@ -93,20 +237,8 @@ void WaypointThread::AnalyzeFile(std::string filename)
 		m_PolygonDefinitions[index] = PolygonDef::Invalid;
 	}
 
-	/*sar_field_big* p_sar = NULL;
+	sar_field_big* p_sar = NULL;
 
-	for (auto wp : m_WaypointVector)
-		delete wp;
-	m_WaypointVector.clear();
-	m_MPerLat = HRM_INV;
-	m_MPerLon = HRM_INV;
-	m_MinDist = 100;
-	m_MaxWaypoints = HRM_SAR_WAYPOINTS;
-	m_WIndex = 1;
-
-	int poly_count = 0;
-	int forest_count = 0;
-	int terrain_type = 0;*/
 
 	double long_1 = HRM_INV;
 	double lat_1 = HRM_INV;
@@ -116,10 +248,10 @@ void WaypointThread::AnalyzeFile(std::string filename)
 	bool is_water = false;
 
 
-	std::vector<point> water_points;
-	std::vector<waypoint> considered_points;
+	std::vector<point> water_points;  // So far water points are local, should be members?
+	//std::vector<waypoint> considered_points;
 
-	std::vector<int> water_defs;
+	//std::vector<int> water_defs;
 
 	int elevation_pos = 0;
 	bool elevation_pos_found = false;
@@ -157,7 +289,7 @@ void WaypointThread::AnalyzeFile(std::string filename)
 
 			if (item_2.find("overlay 1") != std::string::npos)
 			{
-				is_overlay == true;
+				is_overlay = true;
 			}
 		}
 		else if (item_1.compare("TERRAIN_DEF") == 0)
@@ -201,7 +333,7 @@ void WaypointThread::AnalyzeFile(std::string filename)
 				}
 			}
 		}
-		else if (item_1.compare("RASTER_DATA") == 0)
+		/*else if (item_1.compare("RASTER_DATA") == 0)
 		{
 			if ((is_overlay == false) && (m_TerrainDataFound == false))
 			{
@@ -269,62 +401,71 @@ void WaypointThread::AnalyzeFile(std::string filename)
 		}
 		else if (item_1.compare("BEGIN_POLYGON") == 0)
 		{
-			bool end_segment = false;
-			is_water = false;
-
-			int poly_type = -1;
-			line_stream >> poly_type;
-
-			dsf_polygon current_polygon;
-			polygon_winding current_winding;
-
-			while ((end_segment == false))
+			if ((is_overlay == false) && (m_TerrainDataFound == false))
 			{
-				std::getline(dsf_file, line_string);
+				m_TerrainDataFound = true;
+				is_valid_terrain = true;
+			}
 
-				std::stringstream line_stream_2(line_string);
+			if ((is_valid_terrain == true) || (is_overlay == true))
+			{
+				bool end_segment = false;
+				is_water = false;
 
-				std::string item_1 = "";
-				line_stream_2 >> item_1;
+				int poly_type = -1;
+				line_stream >> poly_type;
 
-				if (item_1.compare("BEGIN_WINDING") == 0)
+				dsf_polygon current_polygon;
+				polygon_winding current_winding;
+
+				while ((end_segment == false))
 				{
-					current_winding.polygon_points.clear();
-				}
-				else if (item_1.compare("END_WINDING") == 0)
-				{
-					current_polygon.polygon_windings.push_back(current_winding);
-				}
-				else if (item_1.compare("POLYGON_POINT") == 0)
-				{
-					long_1 = HRM_INV;
-					lat_1 = HRM_INV;
+					std::getline(dsf_file, line_string);
 
-					line_stream_2 >> long_1;
-					line_stream_2 >> lat_1;
+					std::stringstream line_stream_2(line_string);
 
-					point current_point;
-					current_point.latitutde = lat_1;
-					current_point.longitude = long_1;
+					std::string item_1 = "";
+					line_stream_2 >> item_1;
 
-					current_winding.polygon_points.push_back(current_point);
-				}
-
-				else if (item_1.compare("END_POLYGON") == 0)
-				{
-					/****************************************************************************************************
-					ToDo: Add Exclusion Zone Check
-					*****************************************************************************************************/
-
-
-					if ((poly_type >= 0) && (current_polygon.polygon_windings.size() > 0))
+					if (item_1.compare("BEGIN_WINDING") == 0)
 					{
-						if (m_PolygonDefinitions[poly_type] == PolygonDef::Forest)			m_ForestVector.push_back(current_polygon);
-						else if (m_PolygonDefinitions[poly_type] == PolygonDef::Beach)			m_BeachVector.push_back(current_polygon);
-						else if (m_PolygonDefinitions[poly_type] == PolygonDef::Facade)			m_UrbanVector.push_back(current_polygon);
-						else if (m_PolygonDefinitions[poly_type] == PolygonDef::AutogenBlock)	m_UrbanVector.push_back(current_polygon);
-						else if (m_PolygonDefinitions[poly_type] == PolygonDef::AutogenString)	m_UrbanVector.push_back(current_polygon);
-						else if (m_PolygonDefinitions[poly_type] == PolygonDef::Water)			m_WaterVector.push_back(current_polygon);
+						current_winding.polygon_points.clear();
+					}
+					else if (item_1.compare("END_WINDING") == 0)
+					{
+						current_polygon.polygon_windings.push_back(current_winding);
+					}
+					else if (item_1.compare("POLYGON_POINT") == 0)
+					{
+						long_1 = HRM_INV;
+						lat_1 = HRM_INV;
+
+						line_stream_2 >> long_1;
+						line_stream_2 >> lat_1;
+
+						point current_point;
+						current_point.latitutde = lat_1;
+						current_point.longitude = long_1;
+
+						current_winding.polygon_points.push_back(current_point);
+					}
+
+					else if (item_1.compare("END_POLYGON") == 0)
+					{
+						//***************************************************************************************************
+						//ToDo: Add Exclusion Zone Check
+						//***************************************************************************************************
+
+
+						if ((poly_type >= 0) && (current_polygon.polygon_windings.size() > 0))
+						{
+							if (m_PolygonDefinitions[poly_type] == PolygonDef::Forest)			m_ForestVector.push_back(current_polygon);
+							else if (m_PolygonDefinitions[poly_type] == PolygonDef::Beach)			m_BeachVector.push_back(current_polygon);
+							else if (m_PolygonDefinitions[poly_type] == PolygonDef::Facade)			m_UrbanVector.push_back(current_polygon);
+							else if (m_PolygonDefinitions[poly_type] == PolygonDef::AutogenBlock)	m_UrbanVector.push_back(current_polygon);
+							else if (m_PolygonDefinitions[poly_type] == PolygonDef::AutogenString)	m_UrbanVector.push_back(current_polygon);
+							else if (m_PolygonDefinitions[poly_type] == PolygonDef::Water)			m_WaterVector.push_back(current_polygon);
+						}
 					}
 				}
 			}
@@ -343,12 +484,18 @@ void WaypointThread::AnalyzeFile(std::string filename)
 			}
 			else
 			{
+				/// ///////////////////////////////////////////////////////////////////////////////////////////////
+				//
+				//ToDo: Add For Textured Water (Ortho4XP)
+				//****************************************************************************************************
+
 				is_water = false;
-				for (auto t_number : water_defs)
-				{
-					if (t_number == terrain_type)
-						is_water = true;
-				}
+
+				//for (auto t_number : m_WaterVector)
+				//{
+				//	if (t_number == terrain_type)
+				//		is_water = true;
+				//}
 			}
 		}
 
@@ -359,52 +506,59 @@ void WaypointThread::AnalyzeFile(std::string filename)
 
 		else if (item_1.compare("PATCH_VERTEX") == 0)
 		{
-#ifdef ORTHO4XP
-			if (elev_filename.size() > 0)
-#endif
+			if ((is_overlay == false) && (m_TerrainDataFound == false))
 			{
-				if (is_water == true)
-				{
-					point p;
-					line_stream >> p.longitude;
-					line_stream >> p.latitutde;
-
-					water_points.push_back(p);
-				}
+				m_TerrainDataFound = true;
+				is_valid_terrain = true;
 			}
-#ifdef ORTHO4XP
-			else
-			{
-				if (p_sar == NULL)
-				{
-					p_sar = new sar_field_big[dem_height * dem_width];
-					elev_height = dem_height;
-					elev_width = dem_width;
 
-					for (int index = 0; index < (elev_height * elev_width); index++)
+			if (is_valid_terrain == true)
+			{
+				if (elev_filename.size() > 0)
+				{
+					if (is_water == true)
 					{
-						p_sar[index].is_usable = true;
+						point p;
+						line_stream >> p.longitude;
+						line_stream >> p.latitutde;
+
+						water_points.push_back(p);
 					}
 				}
+
 				else
 				{
-					double latitude;
-					double longitude;
-					float elevation;
+					if (p_sar == NULL)
+					{
+						p_sar = new sar_field_big[dem_height * dem_width];
+						elev_height = dem_height;
+						elev_width = dem_width;
 
-					line_stream >> longitude;
-					line_stream >> latitude;
-					line_stream >> elevation;
+						for (int index = 0; index < (elev_height * elev_width); index++)
+						{
+							p_sar[index].is_usable = true;
+						}
+					}
+					else
+					{
+						double latitude;
+						double longitude;
+						float elevation;
 
-					int x = min((int)((longitude - tile_long) * ((double)(elev_width - 1))), elev_width - 1);
-					int y = min((int)((latitude - tile_lat) * ((double)(elev_height - 1))), elev_height - 1);
+						line_stream >> longitude;
+						line_stream >> latitude;
+						line_stream >> elevation;
 
-					p_sar[(y * elev_height) + x].is_usable = !is_water;
-					p_sar[(y * elev_height) + x].elevation = elevation;
+						int x = min((int)((longitude - m_WaypointData.m_Lon) * ((double)(elev_width - 1))), elev_width - 1);
+						int y = min((int)((latitude - m_WaypointData.m_Lat) * ((double)(elev_height - 1))), elev_height - 1);
 
+						p_sar[(y * elev_height) + x].is_usable = !is_water;
+						p_sar[(y * elev_height) + x].elevation = elevation;
+
+					}
 				}
+
 			}
-#endif
 		}
 
 		else if (item_1.compare("BEGIN_SEGMENT") == 0)
@@ -481,54 +635,88 @@ void WaypointThread::AnalyzeFile(std::string filename)
 			water_points.push_back(p);
 
 
-		}
-
-		/*else if (item_1.compare("PATCH_VERTEX") == 0)
-		{
-			lat_1 = HRM_INV;
-			long_1 = HRM_INV;
-
-			line_stream >> long_1;
-			line_stream >> lat_1;
-
-			double d1, d2, d3, d4;
-			double steepness = 0;
-
-			line_stream >> d1;
-			line_stream >> d2;
-			line_stream >> d3;
-			line_stream >> d4;
-
-			line_stream >> steepness;
-
-
-
-			if ((long_1 > 0) && (lat_1 > 0))
-			{
-
-				int segment = GetSARSegment(lat_1, long_1);
-				p_sar[segment].has_terrain = true;
-
-				if ((steepness > 0) && (steepness < 1.0))
-				{
-					if (p_sar[segment].steepness > steepness)
-					{
-						p_sar[segment].steepness = steepness;
-						p_sar[segment].latitude = lat_1;
-						p_sar[segment].logitude = long_1;
-					}
-				}
-
-
-			}
-
-
 		}*/
 
+		else if (item_1.compare("BEGIN_SEGMENT") == 0)
+		{
+
+			int type = -1;
+			int sub_type = -1;
+			int node_id = -1;
+			int elevation_1 = 0;
+			int elevation_2 = 0;
+			point p;
+			line_stream >> type;
+			line_stream >> sub_type;
+			line_stream >> node_id;
+			line_stream >> long_1;
+			line_stream >> lat_1;
+			line_stream >> elevation_1;
+
+
+			bool end_segment = false;
+
+			//water_points.push_back(p);
+
+			if (sub_type > 0)
+			{
+				while ((end_segment == false))
+				{
+					std::getline(dsf_file, line_string);
+					std::stringstream line_stream_2(line_string);
+
+					std::string item_2 = "";
+					line_stream_2 >> item_2;
+
+					if (item_2.compare("SHAPE_POINT") == 0)
+					{
+						line_stream_2 >> long_2;
+						line_stream_2 >> lat_2;
+						line_stream_2 >> elevation_2;
+
+						if ((elevation_1 == 0) && (elevation_2 == 0))
+							CheckStreetWaypoint(lat_1, long_1, lat_2, long_2, sub_type);
+
+						lat_1 = lat_2;
+						long_1 = long_2;
+						elevation_1 = elevation_2;
+
+					}
+					else if (item_2.compare("END_SEGMENT") == 0)
+					{
+						line_stream_2 >> node_id;
+
+						line_stream_2 >> long_2;
+						line_stream_2 >> lat_2;
+						line_stream_2 >> elevation_2;
+
+
+						if ((elevation_1 == 0) && (elevation_2 == 0)) 
+							CheckStreetWaypoint(lat_1, long_1, lat_2, long_2, sub_type);
+
+						end_segment = true;
+
+					}
+					else
+					{
+						end_segment = true;
+					}
+
+				}
+			}
+
+		}
 
 	}
 
 	dsf_file.close();
+
+	if (is_overlay == false)
+	{
+		//m_TerrainDataFound = true;
+	}
+
+	/*
 
 	double delta_lat = 1.0 / ((double)(elev_height - 1));
 	double delta_long = 1.0 / ((double)(elev_width - 1));
@@ -792,7 +980,7 @@ void WaypointThread::AnalyzeFile(std::string filename)
 
 	}*/
 
-	if (considered_points.size() > 0)
+	/*if (considered_points.size() > 0)
 	{
 
 		std::ofstream fms_file;
@@ -821,7 +1009,7 @@ void WaypointThread::AnalyzeFile(std::string filename)
 
 			fms_file.close();
 		}
-	}
+	}*/
 
 	if (p_sar != NULL) delete[] p_sar;
 }

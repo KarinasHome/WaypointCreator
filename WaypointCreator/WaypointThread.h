@@ -3,6 +3,7 @@
 #include "common.h"
 #include <vector>
 #include <list>
+#include <algorithm>
 
 struct WaypointCreationData
 {
@@ -17,6 +18,7 @@ struct WaypointCreationData
 	int m_WaypointsMax = 400;
 
 	float m_SARFlatSurfaceSlope = 5;
+	float m_SARFlatSurfaceMinSlope = 0.1;
 	float m_SlingMinSlope = 25;
 	float m_SlingMaxSlope = 65;
 
@@ -38,7 +40,7 @@ class WaypointThread
 {
 
 	WaypointCreationData m_WaypointData;
-	std::vector<waypoint*> m_WaypointVector;
+	std::vector<waypoint*> m_StreetWaypointVector;
 	std::vector<dsf_polygon> m_ForestVector;
 	std::vector<dsf_polygon> m_BeachVector;
 	std::vector<dsf_polygon> m_UrbanVector;
@@ -51,7 +53,7 @@ class WaypointThread
 	double m_LonPerM = HRM_INV;
 
 	int m_MinDist = 100;
-	int m_MaxWaypoints = 100;
+	int m_MaxWaypoints = 500;
 	int m_WIndex = 1;
 
 	int m_DemWidth = 2001;
@@ -67,6 +69,9 @@ public:
 
 	void RunComputation();
 	void AnalyzeFile(std::string filename);
+	void AnalyzeStreetWaypoints(std::string fms_filename);
+	void CheckStreetWaypoint(double lat1, double long1, double lat2, double long2, int sub_type);
+	double calc_distance_m(double lat1, double long1, double lat2, double long2);
 
 };
 

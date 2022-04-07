@@ -8,6 +8,9 @@
 #define HRM_INV -1000
 #define MAX_POLYGON_DEF 1000
 
+const int dem_width = 2001;
+const int dem_height = 2001;
+
 extern std::recursive_mutex outputListSharedMutex;
 
 namespace WaypointCreator

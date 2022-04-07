@@ -43,11 +43,11 @@ public:
 	std::list<std::string> m_SceneryPathList;
 	WaypointCreationData m_WPData;
 
-	int m_LatStartValue = 0;
-	int m_LatStopValue = 0;
+	int m_LatStartValue = 47;
+	int m_LatStopValue = 47;
 
-	int m_LonStartValue = 0;
-	int m_LonStopValue = 0;
+	int m_LonStartValue = 8;
+	int m_LonStopValue = 8;
 
 	int m_FlatSlopeMaxValue = 5;
 	int m_SlingSlopeMinValue = 25;
