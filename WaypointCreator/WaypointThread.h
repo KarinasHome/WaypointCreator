@@ -4,6 +4,7 @@
 #include <vector>
 #include <list>
 #include <algorithm>
+//#include "WaypointCreatorDlg.h"
 
 struct WaypointCreationData
 {
@@ -18,7 +19,7 @@ struct WaypointCreationData
 	int m_WaypointsMax = 400;
 
 	float m_SARFlatSurfaceSlope = 5;
-	float m_SARFlatSurfaceMinSlope = 0.1;
+	float m_SARFlatSurfaceMinSlope = 0.1f;
 	float m_SlingMinSlope = 25;
 	float m_SlingMaxSlope = 65;
 
@@ -34,6 +35,8 @@ struct WaypointCreationData
 	std::string m_XP11_Path = "";
 	std::list<std::string> m_SceneryPathList;
 
+	CDialogEx *m_dialog = NULL;
+
 };
 
 class WaypointThread
@@ -46,6 +49,7 @@ class WaypointThread
 	std::vector<dsf_polygon> m_UrbanVector;
 	std::vector<dsf_polygon> m_WaterVector;
 	CListBox& m_OutputList;
+	CProgressCtrl& m_ProgressBar;
 
 	double m_MPerLat = HRM_INV;
 	double m_MPerLon = HRM_INV;
@@ -62,14 +66,19 @@ class WaypointThread
 	bool m_TerrainDataFound = false;
 
 	PolygonDef m_PolygonDefinitions[MAX_POLYGON_DEF];
+	urban_field *mp_UrbanField;
+	std::vector<street_junction> m_ConsideredStreetJunctions;
 
 
 public:
-	WaypointThread(WaypointCreationData waypointDataIn, CListBox& outputList);
+	WaypointThread(WaypointCreationData waypointDataIn, CListBox& outputList, CProgressCtrl& progressBar);
+	~WaypointThread();
 
+	void DoEvents(void);
 	void RunComputation();
 	void AnalyzeFile(std::string filename);
 	void AnalyzeStreetWaypoints(std::string fms_filename);
+	void AnalyzeUrbanWaypoints(std::string fms_filename);
 	void CheckStreetWaypoint(double lat1, double long1, double lat2, double long2, int sub_type);
 	double calc_distance_m(double lat1, double long1, double lat2, double long2);
 

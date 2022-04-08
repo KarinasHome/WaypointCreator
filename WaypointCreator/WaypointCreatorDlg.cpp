@@ -80,6 +80,7 @@ void CWaypointCreatorDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_SLING_MAX_SLOPE, SlingSlopeMax);
 	DDX_Control(pDX, IDC_EDIT_SECTIONS, m_Sections);
 	DDX_Control(pDX, IDC_LIST_OUTPUT, m_OutputList);
+	DDX_Control(pDX, IDC_PROGRESS1, m_ProgressFile);
 }
 
 BEGIN_MESSAGE_MAP(CWaypointCreatorDlg, CDialogEx)
@@ -143,18 +144,18 @@ BOOL CWaypointCreatorDlg::OnInitDialog()
 	// TODO: Hier zusätzliche Initialisierung einfügen
 
 	PathToXP11EditBrowse.EnableFolderBrowseButton();
-	PathToXP11EditBrowse.SetWindowTextW(L"G:\\XPlane 11 Test");
+	PathToXP11EditBrowse.SetWindowText("G:\\XPlane 11 Test");
 
-	m_LatStart.SetWindowTextW(CA2CT(std::to_string(m_LatStartValue).c_str()));
-	m_LatStop.SetWindowTextW(CA2CT(std::to_string(m_LatStopValue).c_str()));
-	m_LonStart.SetWindowTextW(CA2CT(std::to_string(m_LonStartValue).c_str()));
-	m_LonStop.SetWindowTextW(CA2CT(std::to_string(m_LonStopValue).c_str()));
+	m_LatStart.SetWindowText(CA2CT(std::to_string(m_LatStartValue).c_str()));
+	m_LatStop.SetWindowText(CA2CT(std::to_string(m_LatStopValue).c_str()));
+	m_LonStart.SetWindowText(CA2CT(std::to_string(m_LonStartValue).c_str()));
+	m_LonStop.SetWindowText(CA2CT(std::to_string(m_LonStopValue).c_str()));
 
-	FlatSlopeMax.SetWindowTextW(CA2CT(std::to_string(m_FlatSlopeMaxValue).c_str()));
-	SlingSlopeMin.SetWindowTextW(CA2CT(std::to_string(m_SlingSlopeMinValue).c_str()));
-	SlingSlopeMax.SetWindowTextW(CA2CT(std::to_string(m_SlingSlopeMaxValue).c_str()));
+	FlatSlopeMax.SetWindowText(CA2CT(std::to_string(m_FlatSlopeMaxValue).c_str()));
+	SlingSlopeMin.SetWindowText(CA2CT(std::to_string(m_SlingSlopeMinValue).c_str()));
+	SlingSlopeMax.SetWindowText(CA2CT(std::to_string(m_SlingSlopeMaxValue).c_str()));
 
-	m_Sections.SetWindowTextW(CA2CT(std::to_string(m_SectionsValue).c_str()));
+	m_Sections.SetWindowText(CA2CT(std::to_string(m_SectionsValue).c_str()));
 
 	//m_LatStart.SetMargins()
 
@@ -233,7 +234,7 @@ void CWaypointCreatorDlg::CheckLimits(CEdit &editBox, int &storeValue, int min, 
 		//else if ((strcmp(text.c_str(), "-0") != 0) && (strcmp(text.c_str(), "-") != 0) && (strcmp(text.c_str(), "") != 0))
 		{
 			m_EnableNotifications = false;
-			editBox.SetWindowTextW(CA2CT(std::to_string(storeValue).c_str()));
+			editBox.SetWindowText(CA2CT(std::to_string(storeValue).c_str()));
 			m_EnableNotifications = true;
 		}
 	}
@@ -250,13 +251,13 @@ void CWaypointCreatorDlg::ReadSceneryInIClicked()
 	std::string folder(pszConvertedAnsiString);
 	std::string scenery_ini_path = folder + "\\Custom Scenery\\scenery_packs.ini";
 
-	if (windowText.Compare(L"") == 0)
+	if (windowText.Compare("") == 0)
 	{
-		MessageBox(L"No folder selected");
+		MessageBox("No folder selected");
 	}
 	else if (!exists_test(scenery_ini_path))
 	{
-		MessageBox(L"Error: scenery_packs.ini not found");
+		MessageBox("Error: scenery_packs.ini not found");
 	}
 	else
 	{
@@ -461,14 +462,15 @@ void CWaypointCreatorDlg::OnBnClickedBtnCreateWaypoints()
 	wpData.m_SlingMissions = m_SlingEnable.GetCheck() > 0 ? true : false;
 
 	wpData.m_Sections = m_SectionsValue;
-	wpData.m_SARFlatSurfaceSlope = m_FlatSlopeMaxValue;
-	wpData.m_SlingMinSlope = m_SlingSlopeMinValue;
-	wpData.m_SlingMaxSlope = m_SlingSlopeMaxValue;
+	wpData.m_SARFlatSurfaceSlope = (float) m_FlatSlopeMaxValue;
+	wpData.m_SlingMinSlope = (float) m_SlingSlopeMinValue;
+	wpData.m_SlingMaxSlope = (float) m_SlingSlopeMaxValue;
 
 	wpData.m_SceneryPathList = m_SceneryPathList;
 
 
 	wpData.m_XP11_Path = m_XP11_Path;
+	wpData.m_dialog = this;
 
 	for (int lat = latStart; lat <= latStop; lat++)
 	{
@@ -477,7 +479,7 @@ void CWaypointCreatorDlg::OnBnClickedBtnCreateWaypoints()
 			wpData.m_Lat = lat;
 			wpData.m_Lon = lon;
 
-			WaypointThread nextComputation(wpData, m_OutputList);
+			WaypointThread nextComputation(wpData, m_OutputList, m_ProgressFile);
 			nextComputation.RunComputation();
 
 		}

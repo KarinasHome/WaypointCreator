@@ -8,6 +8,14 @@
 #define HRM_INV -1000
 #define MAX_POLYGON_DEF 1000
 
+
+#define HRM_U_SECTOR 100
+
+#define HRM_U_JUNCTION_DIST 5.0
+#define HRM_U_URBAN_DIST 25.0
+#define HRM_U_ANGLE_VAR 2.5
+#define HRM_U_STREET_DIST 25.0
+
 const int dem_width = 2001;
 const int dem_height = 2001;
 
@@ -105,6 +113,19 @@ inline void writeOutput(std::string outputTextIn, CListBox& outputListIn)
 {
 	//std::unique_lock<std::recursive_mutex> physics_shm_lock(outputListSharedMutex, std::defer_lock);
 	outputListIn.AddString(CA2CT(outputTextIn.c_str()));
+}
+
+inline int GetUrbanSegment(double latitude, double longitude)
+{
+
+
+	double delta_lat = abs(latitude - ((int)latitude));
+	double delta_long = abs(longitude - ((int)longitude));
+
+	int index_lat = (int)(min(delta_lat / (1.0 / ((double)HRM_U_SECTOR)), ((double)HRM_U_SECTOR) - 1.0));
+	int index_long = (int)(min(delta_long / (1.0 / ((double)HRM_U_SECTOR)), ((double)HRM_U_SECTOR) - 1.0));
+
+	return (index_lat * HRM_U_SECTOR) + index_long;
 }
 
 inline bool exists_test(const std::string& name) {
