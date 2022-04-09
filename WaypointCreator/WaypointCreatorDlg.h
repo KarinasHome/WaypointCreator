@@ -53,6 +53,8 @@ public:
 	int m_SlingSlopeMinValue = 25;
 	int m_SlingSlopeMaxValue = 65;
 	int m_SectionsValue = 100;
+
+	
 	
 
 	bool m_EnableNotifications = true;

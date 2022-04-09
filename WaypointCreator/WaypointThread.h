@@ -63,7 +63,19 @@ class WaypointThread
 	int m_DemWidth = 2001;
 	int m_DemHeight = 2001;
 
+	int m_elev_width = 1201;
+	int m_elev_height = 1201;
+	int m_elev_bpp = 2;
+	float m_elev_scale = 1.0f;
+	float m_elev_offset = 0;
+	int m_elev_version = 0;
+	std::string m_elev_filename = "";
+
+	bool m_ElevationFileFound = false;
+
 	bool m_TerrainDataFound = false;
+	sar_field_big* mp_sar;
+	std::vector<point> m_water_points;
 
 	PolygonDef m_PolygonDefinitions[MAX_POLYGON_DEF];
 	urban_field *mp_UrbanField;
@@ -76,11 +88,11 @@ public:
 
 	void DoEvents(void);
 	void RunComputation();
-	void AnalyzeFile(std::string filename);
+	void AnalyzeFile(std::string filename, std::string workpath);
 	void AnalyzeStreetWaypoints(std::string fms_filename);
 	void AnalyzeUrbanWaypoints(std::string fms_filename);
+	void AnalyzeSARWaypoints(std::string fms_filename, bool sling_load);
 	void CheckStreetWaypoint(double lat1, double long1, double lat2, double long2, int sub_type);
-	double calc_distance_m(double lat1, double long1, double lat2, double long2);
 
 };
 

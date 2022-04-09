@@ -144,7 +144,7 @@ BOOL CWaypointCreatorDlg::OnInitDialog()
 	// TODO: Hier zusätzliche Initialisierung einfügen
 
 	PathToXP11EditBrowse.EnableFolderBrowseButton();
-	PathToXP11EditBrowse.SetWindowText("G:\\XPlane 11 Test");
+	PathToXP11EditBrowse.SetWindowText(L"G:\\XPlane 11 Test");
 
 	m_LatStart.SetWindowText(CA2CT(std::to_string(m_LatStartValue).c_str()));
 	m_LatStop.SetWindowText(CA2CT(std::to_string(m_LatStopValue).c_str()));
@@ -251,13 +251,13 @@ void CWaypointCreatorDlg::ReadSceneryInIClicked()
 	std::string folder(pszConvertedAnsiString);
 	std::string scenery_ini_path = folder + "\\Custom Scenery\\scenery_packs.ini";
 
-	if (windowText.Compare("") == 0)
+	if (windowText.Compare(L"") == 0)
 	{
-		MessageBox("No folder selected");
+		MessageBox(L"No folder selected");
 	}
 	else if (!exists_test(scenery_ini_path))
 	{
-		MessageBox("Error: scenery_packs.ini not found");
+		MessageBox(L"Error: scenery_packs.ini not found");
 	}
 	else
 	{
