@@ -10,6 +10,7 @@
 #define IDC_MFCEDITBROWSE_XP11_PATH     1001
 #define R                               1002
 #define IDC_LIST_SCENERY                1003
+#define IDC_MFCEDITBROWSE_TMP_PATH      1004
 #define IDC_BUTTON_SELECT_NONE          1005
 #define IDC_BUTTON_SELECT_ALL           1006
 #define IDC_EDIT_SLING_MAX_SLOPE        1007
@@ -21,11 +22,15 @@
 #define IDC_SLING                       1013
 #define IDC_SAR                         1014
 #define IDC_URBAN                       1015
+#define IDC_STREET2                     1016
+#define IDC_RECOMP                      1016
 #define IDC_LIST_OUTPUT                 1017
 #define IDC_EDIT_LAT_START              1018
 #define IDC_EDIT_FLAT_SLOPE             1019
 #define IDC_EDIT_SLING_MIN_SLOPE        1020
 #define IDC_EDIT_SECTIONS               1021
+#define IDC_EDIT_MAX_WAYP               1022
+#define IDC_EDIT_MIN_ALT                1023
 #define IDC_PROGRESS1                   1024
 
 // Next default values for new objects

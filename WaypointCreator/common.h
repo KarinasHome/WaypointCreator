@@ -21,15 +21,19 @@
 
 #define HRM_SAR_SECTOR_BIG 100
 #define HRM_SAR_SECTOR_FINE 100
-#define HRM_SAR_WAYPOINTS 200
-#define HRM_SAR_URBAN_DIST 5 
-#define HRM_SAR_WATER_DIST 3 
+//#define HRM_SAR_WAYPOINTS 200
+#define HRM_SAR_URBAN_DIST 10 
+#define HRM_SAR_FOREST_DIST 1
+#define HRM_SAR_WATER_DIST 1 
 
-#define HRM_FLAT_SURFACE_DIST 200.0
-#define HRM_FLAT_SURFACE_ANGLE 5
+//#define HRM_FLAT_SURFACE_DIST 200.0
+//#define HRM_FLAT_SURFACE_ANGLE 5
 
-#define HRM_STEEP_SURFACE_ANGLE_MIN 25
-#define HRM_STEEP_SURFACE_ANGLE_MAX 65
+//#define HRM_STEEP_SURFACE_ANGLE_MIN 25
+//#define HRM_STEEP_SURFACE_ANGLE_MAX 65
+
+#define HRM_STREET_TYPE_MIN 20
+#define HRM_STREET_TYPE_MAX 80
 
 const int dem_width = 2001;
 const int dem_height = 2001;
@@ -86,6 +90,12 @@ struct street_section
 	double longitude2 = HRM_INV;
 };
 
+struct vertex_points
+{
+	point p[3];
+	bool vertex_valid = false;
+};
+
 struct street_junction
 {
 	double latitutdec = HRM_INV;
@@ -107,6 +117,9 @@ struct sar_field_big
 {
 	bool has_terrain = false;
 	bool is_usable = true;
+	bool is_forest = false;
+	bool is_water = false;
+	bool is_urban = false;
 
 	double latitude = HRM_INV;
 	double logitude = HRM_INV;
@@ -157,6 +170,8 @@ inline bool exists_test(const std::string& name) {
 
 	return file_exists;
 }
+
+
 
 inline bool str_is_number(const char* pstr)
 {

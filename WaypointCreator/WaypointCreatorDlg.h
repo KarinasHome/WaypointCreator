@@ -4,12 +4,16 @@
 
 #pragma once
 
+
 #include <list>
 #include <string>
 #include "WaypointThread.h"
 #include "common.h"
+#include <queue>
+#include <thread>
+#include <mutex>
 
-
+//#include <boost/property_tree/ini_parser.hpp>
 
 
 // CWaypointCreatorDlg-Dialogfeld
@@ -43,22 +47,31 @@ public:
 	std::list<std::string> m_SceneryPathList;
 	WaypointCreationData m_WPData;
 
-	int m_LatStartValue = 55;
-	int m_LatStopValue = 55;
+	int m_LatStartValue = -90;
+	int m_LatStopValue = 90;
+	unsigned int m_MaxCores = 1;
 
-	int m_LonStartValue = -4;
-	int m_LonStopValue = -4;
+	int m_LonStartValue = 0;
+	int m_LonStopValue = 0;
 
 	int m_FlatSlopeMaxValue = 5;
 	int m_SlingSlopeMinValue = 25;
 	int m_SlingSlopeMaxValue = 65;
 	int m_SectionsValue = 100;
 
+	int m_Min_Alt = -100;
+	int m_Max_Wayp = 100;
+
+	std::vector<std::thread*> mp_std_threads;
+	std::vector<WaypointThread*> mp_wp_threads;
+
 	
 	
 
 	bool m_EnableNotifications = true;
 	void CheckLimits(CEdit& editBox, int& storeValue, int min, int max);
+	void SaveIni(void);
+	void ReadIni(void);
 
 
 	CMFCEditBrowseCtrl PathToXP11EditBrowse;
@@ -98,4 +111,12 @@ public:
 	afx_msg void OnEnKillfocusEditSections();
 	CListBox m_OutputList;
 	CProgressCtrl m_ProgressFile;
+	afx_msg void OnEnKillfocusEditMaxWayp();
+	afx_msg void OnEnKillfocusEditMinAlt();
+	CEdit m_Max_Waypoints;
+	CEdit m_SAR_Min_Alt;
+	CMFCEditBrowseCtrl PathToTmpEditBrowse;
+	CButton m_DoNotRecompute;
+	afx_msg void OnBnCloseClickedOk();
+	afx_msg void OnClose();
 };

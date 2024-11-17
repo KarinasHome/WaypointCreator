@@ -39,6 +39,9 @@
     <ClInclude Include="WaypointThread.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="TSQueue.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="WaypointCreator.cpp">

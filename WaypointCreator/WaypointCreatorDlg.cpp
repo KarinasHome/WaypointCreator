@@ -7,10 +7,16 @@
 #include "WaypointCreator.h"
 #include "WaypointCreatorDlg.h"
 #include "afxdialogex.h"
+#include <iostream>
+#include <fstream>
+#include "atlstr.h"
+//#include <boost/property_tree/ptree.hpp>
+
 
 
 #include <string>
 #include <sstream>
+#include <array>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -81,6 +87,10 @@ void CWaypointCreatorDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_EDIT_SECTIONS, m_Sections);
 	DDX_Control(pDX, IDC_LIST_OUTPUT, m_OutputList);
 	DDX_Control(pDX, IDC_PROGRESS1, m_ProgressFile);
+	DDX_Control(pDX, IDC_EDIT_MAX_WAYP, m_Max_Waypoints);
+	DDX_Control(pDX, IDC_EDIT_MIN_ALT, m_SAR_Min_Alt);
+	DDX_Control(pDX, IDC_MFCEDITBROWSE_TMP_PATH, PathToTmpEditBrowse);
+	DDX_Control(pDX, IDC_RECOMP, m_DoNotRecompute);
 }
 
 BEGIN_MESSAGE_MAP(CWaypointCreatorDlg, CDialogEx)
@@ -107,6 +117,10 @@ BEGIN_MESSAGE_MAP(CWaypointCreatorDlg, CDialogEx)
 	ON_EN_KILLFOCUS(IDC_EDIT_FLAT_SLOPE, &CWaypointCreatorDlg::OnEnKillfocusEditFlatSlope)
 	ON_EN_CHANGE(IDC_EDIT_SECTIONS, &CWaypointCreatorDlg::OnEnChangeEditSections)
 	ON_EN_KILLFOCUS(IDC_EDIT_SECTIONS, &CWaypointCreatorDlg::OnEnKillfocusEditSections)
+	ON_EN_KILLFOCUS(IDC_EDIT_MAX_WAYP, &CWaypointCreatorDlg::OnEnKillfocusEditMaxWayp)
+	ON_EN_KILLFOCUS(IDC_EDIT_MIN_ALT, &CWaypointCreatorDlg::OnEnKillfocusEditMinAlt)
+	ON_BN_CLICKED(IDOK, &CWaypointCreatorDlg::OnBnCloseClickedOk)
+	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 
@@ -143,8 +157,20 @@ BOOL CWaypointCreatorDlg::OnInitDialog()
 
 	// TODO: Hier zusätzliche Initialisierung einfügen
 
+	
+
 	PathToXP11EditBrowse.EnableFolderBrowseButton();
-	PathToXP11EditBrowse.SetWindowText(L"G:\\XPlane 11 Test");
+	PathToXP11EditBrowse.SetWindowText("C:\\X-Plane 12");
+
+	PathToTmpEditBrowse.EnableFolderBrowseButton();
+	PathToTmpEditBrowse.SetWindowText("C:\\hrm_tmp\\");
+
+	m_StreetEnable.SetCheck(1);
+	m_UrbanEnable.SetCheck(1);
+	m_SarEnable.SetCheck(1);
+	m_SlingEnable.SetCheck(1);
+
+	ReadIni();
 
 	m_LatStart.SetWindowText(CA2CT(std::to_string(m_LatStartValue).c_str()));
 	m_LatStop.SetWindowText(CA2CT(std::to_string(m_LatStopValue).c_str()));
@@ -156,6 +182,12 @@ BOOL CWaypointCreatorDlg::OnInitDialog()
 	SlingSlopeMax.SetWindowText(CA2CT(std::to_string(m_SlingSlopeMaxValue).c_str()));
 
 	m_Sections.SetWindowText(CA2CT(std::to_string(m_SectionsValue).c_str()));
+	m_Max_Waypoints.SetWindowText(CA2CT(std::to_string(m_Max_Wayp).c_str()));
+	m_SAR_Min_Alt.SetWindowText(CA2CT(std::to_string(m_Min_Alt).c_str()));
+
+	m_MaxCores = std::thread::hardware_concurrency();
+	if (m_MaxCores > 1) m_MaxCores--;
+	writeOutput("Number of cores selected for computation: " + std::to_string(m_MaxCores), m_OutputList);
 
 	//m_LatStart.SetMargins()
 
@@ -251,13 +283,13 @@ void CWaypointCreatorDlg::ReadSceneryInIClicked()
 	std::string folder(pszConvertedAnsiString);
 	std::string scenery_ini_path = folder + "\\Custom Scenery\\scenery_packs.ini";
 
-	if (windowText.Compare(L"") == 0)
+	if (windowText.Compare("") == 0)
 	{
-		MessageBox(L"No folder selected");
+		MessageBox("No folder selected");
 	}
 	else if (!exists_test(scenery_ini_path))
 	{
-		MessageBox(L"Error: scenery_packs.ini not found");
+		MessageBox("Error: scenery_packs.ini not found");
 	}
 	else
 	{
@@ -412,7 +444,7 @@ void CWaypointCreatorDlg::OnEnChangeEditSections()
 
 void CWaypointCreatorDlg::OnEnKillfocusEditSections()
 {
-	CheckLimits(m_Sections, m_SectionsValue, 5, 400);
+	CheckLimits(m_Sections, m_SectionsValue, 5, 1000);
 }
 
 void CWaypointCreatorDlg::OnBnClickedBtnCreateWaypoints()
@@ -426,6 +458,21 @@ void CWaypointCreatorDlg::OnBnClickedBtnCreateWaypoints()
 	m_SceneryPathList.clear();
 
 	m_OutputList.ResetContent();
+
+	CString windowText;
+	PathToTmpEditBrowse.GetWindowText(windowText);
+
+	CT2CA pszConvertedAnsiString(windowText);
+
+	std::string folder(pszConvertedAnsiString);
+
+	std::string tmp_path = folder;
+
+	writeOutput("Temp folder: " + tmp_path, m_OutputList);
+
+	std::string command;
+	command = "rd /s /q \"" + tmp_path + "\"";
+	system(command.c_str());
 
 	int count = m_SceneryList.GetCount();
 	for (int index = 0; index < count; index++)
@@ -448,40 +495,232 @@ void CWaypointCreatorDlg::OnBnClickedBtnCreateWaypoints()
 	}
 	std::string global_scenery = m_XP11_Path + "Global Scenery\\X-Plane 11 Global Scenery\\";
 	m_SceneryPathList.push_back(global_scenery);
+	global_scenery = m_XP11_Path + "Global Scenery\\X-Plane 12 Global Scenery\\";
+	m_SceneryPathList.push_back(global_scenery);
 
 	/*for (auto path : m_SceneryPathList)
 	{
 		m_OutputList.AddString(CA2CT(path.c_str()));
 	}*/
 
-	WaypointCreationData wpData;
+	int max_threads = 4;
 
-	wpData.m_StreetMissions = m_StreetEnable.GetCheck() > 0 ? true : false;
-	wpData.m_UrbanMissions = m_UrbanEnable.GetCheck() > 0 ? true : false;
-	wpData.m_SARMissions = m_SarEnable.GetCheck() > 0 ? true : false;
-	wpData.m_SlingMissions = m_SlingEnable.GetCheck() > 0 ? true : false;
+	
 
-	wpData.m_Sections = m_SectionsValue;
-	wpData.m_SARFlatSurfaceSlope = (float) m_FlatSlopeMaxValue;
-	wpData.m_SlingMinSlope = (float) m_SlingSlopeMinValue;
-	wpData.m_SlingMaxSlope = (float) m_SlingSlopeMaxValue;
-
-	wpData.m_SceneryPathList = m_SceneryPathList;
-
-
-	wpData.m_XP11_Path = m_XP11_Path;
-	wpData.m_dialog = this;
 
 	for (int lat = latStart; lat <= latStop; lat++)
 	{
 		for (int lon = lonStart; lon <= lonStop; lon++)
 		{
+			while (mp_std_threads.size() >= max_threads)
+			{
+				for (int index = 0; index < mp_std_threads.size(); index++) {
+					
+					while (mp_wp_threads[index]->m_output_messages.size() > 0) writeOutput(mp_wp_threads[index]->m_output_messages.pop(), m_OutputList);
+					
+					if (mp_wp_threads[index]->m_running == false)
+					{
+						writeOutput("Thread finished: " + std::to_string(index), m_OutputList);
+						mp_std_threads[index]->join();
+						delete mp_wp_threads[index];
+						delete mp_std_threads[index];
+						mp_std_threads.erase(mp_std_threads.begin() + index);
+						mp_wp_threads.erase(mp_wp_threads.begin() + index);
+
+					}
+				}
+
+				Sleep(100);
+				MSG msg;
+				while (PeekMessage(&msg, this->GetSafeHwnd(), 0, 0, PM_REMOVE))
+				{
+					DispatchMessage(&msg);
+				}
+			}
+
+
+
+
+			WaypointCreationData wpData;
+
+			wpData.m_StreetMissions = m_StreetEnable.GetCheck() > 0 ? true : false;
+			wpData.m_UrbanMissions = m_UrbanEnable.GetCheck() > 0 ? true : false;
+			wpData.m_SARMissions = m_SarEnable.GetCheck() > 0 ? true : false;
+			wpData.m_SlingMissions = m_SlingEnable.GetCheck() > 0 ? true : false;
+			wpData.m_do_not_recompute = m_DoNotRecompute.GetCheck() > 0 ? true : false;
+
+			wpData.m_Sections = m_SectionsValue;
+			wpData.m_SARFlatSurfaceSlope = (float)m_FlatSlopeMaxValue;
+			wpData.m_SlingMinSlope = (float)m_SlingSlopeMinValue;
+			wpData.m_SlingMaxSlope = (float)m_SlingSlopeMaxValue;
+
+			wpData.m_SARMinAlt = m_Min_Alt;
+			wpData.m_WaypointsMax = m_Max_Wayp;
+
+			wpData.m_SceneryPathList = m_SceneryPathList;
+			wpData.m_tmp_path = tmp_path;
+
+			wpData.m_XP11_Path = m_XP11_Path;
+			wpData.m_dialog = this;
+
+
 			wpData.m_Lat = lat;
 			wpData.m_Lon = lon;
 
-			WaypointThread nextComputation(wpData, m_OutputList, m_ProgressFile);
-			nextComputation.RunComputation();
+			WaypointThread *nextComputation = new WaypointThread(wpData);
+
+			std::thread* p_wp_thread = NULL;
+
+			p_wp_thread = new std::thread(&WaypointThread::RunComputation, nextComputation, 1);
+			writeOutput("Next Thread Started", m_OutputList);
+
+			mp_std_threads.push_back(p_wp_thread);
+			mp_wp_threads.push_back(nextComputation);
 
 		}
 	}
+
+	writeOutput("All Threads Started, waiting for result", m_OutputList);
+
+	while (mp_std_threads.size() > 0)
+	{
+		for (int index = 0; index < mp_std_threads.size(); index++) {
+
+			while (mp_wp_threads[index]->m_output_messages.size() > 0) writeOutput(mp_wp_threads[index]->m_output_messages.pop(), m_OutputList);
+
+			if (mp_wp_threads[index]->m_running == false)
+			{
+				writeOutput("Thread finished: " + std::to_string(index), m_OutputList);
+				mp_std_threads[index]->join();
+				delete mp_wp_threads[index];
+				delete mp_std_threads[index];
+				mp_std_threads.erase(mp_std_threads.begin() + index);
+				mp_wp_threads.erase(mp_wp_threads.begin() + index);
+
+			}
+		}
+
+		Sleep(100);
+		MSG msg;
+		while (PeekMessage(&msg, this->GetSafeHwnd(), 0, 0, PM_REMOVE))
+		{
+			DispatchMessage(&msg);
+		}
+	}
+
+
+	SaveIni();
+}
+
+void CWaypointCreatorDlg::OnEnKillfocusEditMaxWayp()
+{
+	// TODO: Fügen Sie hier Ihren Handlercode für Benachrichtigungen des Steuerelements ein.
+	CheckLimits(m_Max_Waypoints, m_Max_Wayp, 10, 10000);
+}
+
+
+void CWaypointCreatorDlg::OnEnKillfocusEditMinAlt()
+{
+	// TODO: Fügen Sie hier Ihren Handlercode für Benachrichtigungen des Steuerelements ein.
+	CheckLimits(m_SAR_Min_Alt, m_Min_Alt, -1000, 10000);
+}
+
+void CWaypointCreatorDlg::SaveIni(void) {
+	std::ofstream ini_file;
+	ini_file.open("wp_creator.ini");
+	CString windowText;
+	PathToXP11EditBrowse.GetWindowText(windowText);
+	CT2CA pszConvertedAnsiString(windowText);
+	std::string xp_path(pszConvertedAnsiString);
+	PathToTmpEditBrowse.GetWindowText(windowText);
+	CT2CA pszConvertedAnsiString2(windowText);
+	std::string tmp_path(pszConvertedAnsiString2);
+
+	ini_file << xp_path << "\n";
+	ini_file << tmp_path << "\n";
+	ini_file << m_LatStartValue << "\t" << m_LatStopValue << "\t" << m_LonStartValue << "\t" << m_LonStopValue << "\t" << m_FlatSlopeMaxValue << "\t" << m_SlingSlopeMinValue << "\t" << m_SlingSlopeMaxValue << "\t" << m_SectionsValue << "\t" << m_Min_Alt << "\t" << m_Max_Wayp << "\n";
+	ini_file << (m_StreetEnable.GetCheck() > 0 ? true : false) << "\t";
+	ini_file << (m_UrbanEnable.GetCheck() > 0 ? true : false) << "\t";
+	ini_file << (m_SarEnable.GetCheck() > 0 ? true : false) << "\t";
+	ini_file << (m_SlingEnable.GetCheck() > 0 ? true : false) << "\t";
+	ini_file << (m_DoNotRecompute.GetCheck() > 0 ? true : false) << "\n";
+	
+	
+	ini_file.close();
+
+}
+void CWaypointCreatorDlg::ReadIni(void) {
+	std::ifstream ini_file;
+	ini_file.open("wp_creator.ini");
+	if (ini_file.is_open()) {
+		std::string line;
+		std::string tmp_path;
+		
+		getline(ini_file, line);
+		m_XP11_Path = line;
+		getline(ini_file, line);
+		tmp_path = line;
+		getline(ini_file, line);
+		std::istringstream iss(line);
+		iss >> m_LatStartValue;
+		iss >> m_LatStopValue;
+		iss >> m_LonStartValue;
+		iss >> m_LonStopValue;
+		iss >> m_FlatSlopeMaxValue;
+		iss >> m_SlingSlopeMinValue;
+		iss >> m_SlingSlopeMaxValue;
+		iss >> m_SectionsValue;
+		iss >> m_Min_Alt;
+		iss >> m_Max_Wayp;
+		
+		getline(ini_file, line);
+		std::istringstream iss2(line);
+
+		int res = 0;
+		iss2 >> res;
+		m_StreetEnable.SetCheck(res);
+		iss2 >> res;
+		m_UrbanEnable.SetCheck(res);
+		iss2 >> res;
+		m_SarEnable.SetCheck(res);
+		iss2 >> res;
+		m_SlingEnable.SetCheck(res);
+		iss2 >> res;
+		m_DoNotRecompute.SetCheck(res);
+
+		ini_file.close();
+
+		PathToXP11EditBrowse.SetWindowText(m_XP11_Path.c_str());
+		PathToTmpEditBrowse.SetWindowText(tmp_path.c_str());
+	}
+
+	
+}
+
+
+void CWaypointCreatorDlg::OnBnCloseClickedOk()
+{
+	writeOutput("Killing Threads", m_OutputList);
+	for (int index = 0; index < mp_std_threads.size(); index++) {
+		mp_wp_threads[index]->m_stop = true;
+		mp_std_threads[index]->join();
+		writeOutput("Thread Killed", m_OutputList);
+	}
+	SaveIni();
+	// TODO: Fügen Sie hier Ihren Handlercode für Benachrichtigungen des Steuerelements ein.
+	CDialogEx::OnOK();
+}
+
+
+void CWaypointCreatorDlg::OnClose()
+{
+	// TODO: Fügen Sie hier Ihren Meldungshandlercode ein, und/oder benutzen Sie den Standard.
+	writeOutput("Killing Threads", m_OutputList);
+	for (int index = 0; index < mp_std_threads.size(); index++) {
+		mp_wp_threads[index]->m_stop = true;
+		mp_std_threads[index]->join();
+		writeOutput("Thread Killed", m_OutputList);
+	}
+	SaveIni();
+	CDialogEx::OnClose();
 }
