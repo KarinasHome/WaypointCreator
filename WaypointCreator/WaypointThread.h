@@ -78,6 +78,7 @@ class WaypointThread
 	std::string m_elev_filename = "";
 	std::string m_thread_name = "";
 	std::string m_thread_prefix = "";
+	int m_Sections = 100;
 
 	bool m_ElevationFileFound = false;
 

@@ -560,6 +560,8 @@ bool WaypointThread::getFlatPoint(std::vector<dsf_polygon>& forest_vector, sar_f
 					w_out.latitude_head = latitude + (head_y * 200.0 / m_MPerLat);
 					w_out.longitude_head = longitude + (head_x * 200.0 / m_MPerLon);
 
+					return true;
+
 					/*std::ofstream fms_file;
 					fms_file.open("test.fms");
 					fms_file.precision(9);
@@ -600,6 +602,7 @@ WaypointThread::WaypointThread(WaypointCreationData waypointDataIn)
 
 	int elev_width = dem_width;
 	int elev_height = dem_height;
+	m_Sections = m_WaypointData.m_Sections;
 	
 	mp_sar = new sar_field_big[dem_height * dem_width];
 
@@ -649,13 +652,13 @@ void WaypointThread::RunComputation(int index)
 	fms_waypoint_filename += std::to_string(abs(index_lon));
 
 	m_thread_name = fms_waypoint_filename;
-	m_thread_prefix = m_thread_name + ": ";
+	m_thread_prefix = " " + m_thread_name + ": ";
 
 
 	if ((exists_test(hrm_path + "done_" + fms_waypoint_filename + ".txt") == true) && (m_WaypointData.m_do_not_recompute == true))
 	{
 		
-		m_output_messages.push(m_thread_prefix + "Tile already computed");
+		m_output_messages.push(getTime() + m_thread_prefix + "Tile already computed");
 		m_running = false;
 		return;
 	}
@@ -708,7 +711,7 @@ void WaypointThread::RunComputation(int index)
 
 		if (exists_test(dsf_full_path + ".dsf") == true)
 		{
-			m_output_messages.push(m_thread_prefix + "Found: " + dsf_full_path + ".dsf");
+			m_output_messages.push(getTime() + m_thread_prefix + "Found: " + dsf_full_path + ".dsf");
 
 			//command = "rd /s /q \"" + tmp_path + "\"";
 			//system(command.c_str());
@@ -724,7 +727,7 @@ void WaypointThread::RunComputation(int index)
 
 			if (exists_test(dsf_out_path) == true)
 			{
-				m_output_messages.push(m_thread_prefix + "Converting: " + dsf_new_path + ".dsf");
+				m_output_messages.push(getTime() + m_thread_prefix + "Converting: " + dsf_new_path + ".dsf");
 				DoEvents();
 				command = "DSFTool --dsf2text \"" + dsf_work_dir + "out\\" + waypoint_filename + ".dsf\" \"" + dsf_work_dir + "out\\" + waypoint_filename + ".txt\"";
 				system(command.c_str());
@@ -740,7 +743,7 @@ void WaypointThread::RunComputation(int index)
 			}
 			else
 			{
-				m_output_messages.push(m_thread_prefix + "Converting: " + dsf_new_path + ".dsf");
+				m_output_messages.push(getTime() + m_thread_prefix + "Converting: " + dsf_new_path + ".dsf");
 				DoEvents();
 				command = "DSFTool --dsf2text \"" + dsf_new_path + ".dsf\" \"" + dsf_new_path + ".txt\"";
 				system(command.c_str());
@@ -822,7 +825,7 @@ void WaypointThread::RunComputation(int index)
 
 	if ((m_TerrainDataFound == false) && (m_ElevationFileFound == false))
 	{
-		m_output_messages.push(m_thread_prefix + "No Terrain Data found - Skipping Computation");
+		m_output_messages.push(getTime() + m_thread_prefix + "No Terrain Data found - Skipping Computation");
 		m_running = false;
 		return;
 	}
@@ -843,7 +846,7 @@ void WaypointThread::RunComputation(int index)
 		fms_file << "Done" << std::endl;
 		fms_file.close();
 	}
-	m_output_messages.push(m_thread_prefix + "Tile Finished");
+	m_output_messages.push(getTime() + m_thread_prefix + "Tile Finished");
 	DoEvents();
 	m_running = false;
 }
@@ -866,7 +869,7 @@ void WaypointThread::AnalyzeStreetWaypoints(std::string fms_filename)
 
 	if (m_StreetWaypointVector.size() > 0)
 	{
-		m_output_messages.push(m_thread_prefix + "StreetWaypointGeneration: " + fms_filename);
+		m_output_messages.push(getTime() + m_thread_prefix + "StreetWaypointGeneration: " + fms_filename);
 		DoEvents();
 
 		std::ofstream fms_file;
@@ -902,7 +905,7 @@ void WaypointThread::AnalyzeStreetWaypoints(std::string fms_filename)
 	}
 	else
 	{
-		m_output_messages.push(m_thread_prefix + "No Streets found: " + fms_filename);
+		m_output_messages.push(getTime() + m_thread_prefix + "No Streets found: " + fms_filename);
 	}
 }
 
@@ -910,7 +913,7 @@ void WaypointThread::AnalyzeUrbanWaypoints(std::string fms_filename)
 {
 	if (m_ConsideredStreetJunctions.size() > 0)
 	{
-		m_output_messages.push(m_thread_prefix + "UrbanWaypointGeneration: " + fms_filename);
+		m_output_messages.push(getTime() + m_thread_prefix + "UrbanWaypointGeneration: " + fms_filename);
 		DoEvents();
 
 		std::ofstream fms_file;
@@ -943,7 +946,7 @@ void WaypointThread::AnalyzeUrbanWaypoints(std::string fms_filename)
 	}
 	else
 	{
-		m_output_messages.push(m_thread_prefix + "No Urban Crossings found: " + fms_filename);
+		m_output_messages.push(getTime() + m_thread_prefix + "No Urban Crossings found: " + fms_filename);
 	}
 }
 
@@ -951,11 +954,11 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 {
 	if (sling_load == false)
 	{
-		m_output_messages.push(m_thread_prefix + "SARWaypointGeneration: " + fms_filename);
+		m_output_messages.push(getTime() + m_thread_prefix + "SARWaypointGeneration: " + fms_filename);
 	}
 	else
 	{
-		m_output_messages.push(m_thread_prefix + "SlingWaypointGeneration: " + fms_filename);
+		m_output_messages.push(getTime() + m_thread_prefix + "SlingWaypointGeneration: " + fms_filename);
 	}
 	DoEvents();
 
@@ -1022,6 +1025,8 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 			}
 
 		}
+		m_output_messages.push(getTime() + m_thread_prefix + "SAR - Streets done: " + fms_filename);
+
 
 
 
@@ -1071,6 +1076,7 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 			}
 
 		}
+		m_output_messages.push(getTime() + m_thread_prefix + "SAR - Urban Crossings done: " + fms_filename);
 	}
 
 	if (sling_load == false)
@@ -1097,23 +1103,41 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 					pmin.latitutde = min(pmin.latitutde, p.latitutde);
 					pmin.longitude = min(pmin.longitude, p.longitude);
 				}
+				int i = 0;
 
-				int x_start = abs(pmin.longitude - m_WaypointData.m_Lon) / delta_long;
+				if (pmax.longitude > -112) {		
+					i++;
+				}
+
+				/*int x_start = abs(pmin.longitude - m_WaypointData.m_Lon) / delta_long; //XXX
 				int x_stop = abs(pmax.longitude - m_WaypointData.m_Lon) / delta_long;
 
 				int y_start = abs(pmin.latitutde - m_WaypointData.m_Lat) / delta_lat;
-				int y_stop = abs(pmax.latitutde - m_WaypointData.m_Lat) / delta_lat;
+				int y_stop = abs(pmax.latitutde - m_WaypointData.m_Lat) / delta_lat;*/
+
+				int x_start = (pmin.longitude - m_WaypointData.m_Lon) / delta_long; //XXX
+				int x_stop = (pmax.longitude - m_WaypointData.m_Lon) / delta_long;
+
+				int y_start = (pmin.latitutde - m_WaypointData.m_Lat) / delta_lat;
+				int y_stop = (pmax.latitutde - m_WaypointData.m_Lat) / delta_lat;
 
 				x_start = max(x_start - HRM_SAR_URBAN_DIST, 0);
 				y_start = max(y_start - HRM_SAR_URBAN_DIST, 0);
 
-				x_stop = min(x_stop + HRM_SAR_URBAN_DIST, m_elev_width);
-				y_stop = min(y_stop + HRM_SAR_URBAN_DIST, m_elev_height);
+				x_start = min(x_start, m_elev_width-1);
+				y_start = min(y_start, m_elev_width-1);
+
+				x_stop = min(x_stop + HRM_SAR_URBAN_DIST, m_elev_width-1);
+				y_stop = min(y_stop + HRM_SAR_URBAN_DIST, m_elev_height-1);
+
+				x_stop = max(x_stop, 0);
+				y_stop = max(y_stop, 0);
 
 				for (int x = x_start; x < x_stop; x++)
 				{
 					for (int y = y_start; y < y_stop; y++)
 					{
+						CheckStop();
 						double f_lat = m_WaypointData.m_Lat + ((double)y)  / ((double)(m_elev_height - 1));
 						double f_long = m_WaypointData.m_Lon + ((double)x)  / ((double)(m_elev_width - 1));
 
@@ -1158,6 +1182,7 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 
 
 		}
+		m_output_messages.push(getTime() + m_thread_prefix + "SAR - Forests done: " + fms_filename);
 	}
 
 
@@ -1210,6 +1235,8 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 
 	}
 
+	m_output_messages.push(getTime() + m_thread_prefix + "SAR - Water done: " + fms_filename);
+
 
 	
 	/*
@@ -1229,6 +1256,7 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 		}
 	}*/
 	
+	m_output_messages.push(getTime() + m_thread_prefix + "SAR - Marking usable tiles: " + fms_filename);
 
 	for (int x = 0; x < m_elev_width; x++)
 	{
@@ -1246,6 +1274,8 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 
 	}
 
+	m_output_messages.push(getTime() + m_thread_prefix + "SAR - Start Search: " + fms_filename);
+
 
 	write_bmp_usable(mp_sar, m_elev_width, m_elev_height);
 	write_bmp_forest(mp_sar, m_elev_width, m_elev_height);
@@ -1255,10 +1285,11 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 	int delta_h = (m_elev_height - 1) / m_WaypointData.m_Sections;
 	int delta_w = (m_elev_width - 1) / m_WaypointData.m_Sections;
 
-	for (int x = 1; x < (HRM_SAR_SECTOR_BIG - 1); x++)
+	for (int x = 1; x < (HRM_SAR_SECTOR_BIG - 1); x+=2)
 	{
-		for (int y = 1; y < (HRM_SAR_SECTOR_BIG - 1); y++)
+		for (int y = 1; y < (HRM_SAR_SECTOR_BIG - 1); y+=2)
 		{
+			CheckStop(); // This block takes very long
 			waypoint w_act;
 			if (getFlatPoint(m_ForestVector, mp_sar, m_elev_width, m_elev_height, m_WaypointData.m_Lat, m_WaypointData.m_Lon, x * delta_w, y * delta_h, delta_w, delta_h, w_act, 0, sling_load, find_water))
 			{
@@ -1270,11 +1301,14 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 		}
 	}
 
+	m_output_messages.push(getTime() + m_thread_prefix + "SAR - Search Finished: " + fms_filename);
+
 
 	if (considered_points.size() > 0)
 	{
-		m_output_messages.push(m_thread_prefix + "Writing SAR File");
+		m_output_messages.push(getTime() + m_thread_prefix + "Writing SAR File");
 		DoEvents();
+		CheckStop();
 
 		std::ofstream fms_file;
 		fms_file.open(fms_filename);
@@ -1302,10 +1336,62 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 
 			fms_file.close();
 		}
+
+		if (validation_file == true) {
+			std::ifstream f_pre_v("pre_validate.txt");
+			std::ifstream f_post_v("post_validate.txt");
+			std::stringstream ss_pre, ss_post;
+			ss_pre << f_pre_v.rdbuf();
+			ss_post << f_post_v.rdbuf();
+
+			std::string pre_string = ss_pre.str();
+			std::string post_string = ss_post.str();
+
+			std::string objects = "";
+			std::string children = "";
+
+			int step_size = considered_points.size() / m_WaypointData.m_WaypointsMax;
+			if (step_size <= 0) step_size = 1;
+
+			int counter = 5;
+
+			for (int index = 0; index < considered_points.size(); index += step_size)
+			{
+				objects += "    <object class=\"WED_ObjPlacement\" id=\"" + std::to_string(counter) + "\" parent_id=\"4\">\n";
+				objects += "      <children/>\n";
+				objects += "      <hierarchy name=\"comm_tower_25m_3.obj\" locked=\"0\" hidden=\"0\"/>\n";
+				
+				waypoint& p = considered_points[index];
+				objects += "      <point latitude=\"" + std::to_string(p.latitude) + "\" longitude=\"" + std::to_string(p.longitude) + "\" heading=\"0.0\"/>\n";
+				objects += "      <obj_placement custom_msl=\"0\" msl=\"0.0\" resource=\"simheaven/landmarks/chimney_250m.obj\" show_level=\"1 Default\"/>\n";
+				objects += "    </object>\n";
+
+				children += "        <child id=\"" + std::to_string(counter) + "\"/>\n";
+
+				counter++;
+			}
+
+			std::ofstream val_file;
+			val_file.open(fms_filename + ".xml");
+			if (val_file.is_open())
+			{
+				val_file << pre_string << std::endl;
+				val_file << children;
+				val_file << "      </children>\n";
+				val_file << "      <hierarchy name=\"world\" locked=\"0\" hidden=\"0\"/>\n";
+				val_file << "    </object>\n";
+				val_file << objects;
+				val_file << post_string << std::endl;
+
+				val_file.close();
+			}
+
+
+		}
 	}
 	else
 	{
-		m_output_messages.push(m_thread_prefix + "No Points found, skipping file");
+		m_output_messages.push(getTime() + m_thread_prefix + "No Points found, skipping file");
 		DoEvents();
 	}
 }
@@ -1352,14 +1438,14 @@ void WaypointThread::CheckStreetWaypoint(double lat1, double long1, double lat2,
 
 void WaypointThread::CheckStop()
 {
-	if (m_stop == true) std::terminate();
+	if (m_stop > 0) std::terminate();
 }
 
 void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 {
 	if (m_TerrainDataFound == true)
 	{
-		m_output_messages.push(m_thread_prefix + "After Terrain -> Skipped: " + filename);
+		m_output_messages.push(getTime() + m_thread_prefix + "After Terrain -> Skipped: " + filename);
 		DoEvents();
 		return;
 	}
@@ -1367,7 +1453,7 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 	m_progress = 0;
 	DoEvents();
 
-	m_output_messages.push(m_thread_prefix + "Reading from Disk: " + filename);
+	m_output_messages.push(getTime() + m_thread_prefix + "Reading from Disk: " + filename);
 	DoEvents();
 
 	std::ifstream test_file(filename);
@@ -1378,7 +1464,7 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 	std::ifstream dsf_file(filename);
 	std::string line_string;
 	
-	m_output_messages.push(m_thread_prefix + "Analyzing: " + filename);
+	m_output_messages.push(getTime() + m_thread_prefix + "Analyzing: " + filename);
 	DoEvents();
 
 	
@@ -1427,6 +1513,7 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 	int terrain_def_count = 0;
 
 	polygon_winding currentForestExclusion;
+	std::vector<polygon_winding> currentForestExclusionVector;
 	bool forestExclusionFound = false;
 
 	polygon_winding currentStreetExclusion;
@@ -1483,7 +1570,7 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 
 				lat_2 = std::stod(exclusion_value);
 
-				p1.longitude = lon_1;
+				/*p1.longitude = lon_1;
 				p1.latitutde = lat_1;
 
 				p2.longitude = lon_2;
@@ -1493,15 +1580,36 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 				p3.latitutde = lat_2;
 
 				p4.longitude = lon_1;
-				p4.latitutde = lat_2;
+				p4.latitutde = lat_2;*/
+
+				polygon_winding forest_winding;
+
+				p1.longitude = min(lon_1, lon_2);
+				p1.latitutde = max(lat_1, lat_2);
+
+				p2.longitude = max(lon_1, lon_2);
+				p2.latitutde = max(lat_1, lat_2);
+
+				p3.longitude = max(lon_1, lon_2);
+				p3.latitutde = min(lat_1, lat_2);
+
+				p4.longitude = min(lon_1, lon_2);
+				p4.latitutde = min(lat_1, lat_2);
+
+				forest_winding.polygon_points.push_back(p1);
+				forest_winding.polygon_points.push_back(p2);
+				forest_winding.polygon_points.push_back(p3);
+				forest_winding.polygon_points.push_back(p4);
 
 
-				currentForestExclusion.polygon_points.push_back(p1);
+				/*currentForestExclusion.polygon_points.push_back(p1);
 				currentForestExclusion.polygon_points.push_back(p2);
 				currentForestExclusion.polygon_points.push_back(p3);
-				currentForestExclusion.polygon_points.push_back(p4);
+				currentForestExclusion.polygon_points.push_back(p4);*/
 
-				forestExclusionFound = true;
+				//forestExclusionFound = true;
+
+				currentForestExclusionVector.push_back(forest_winding);
 
 			}
 
@@ -1529,7 +1637,7 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 
 				lat_2 = std::stod(exclusion_value);
 
-				p1.longitude = lon_1;
+				/*p1.longitude = lon_1;
 				p1.latitutde = lat_1;
 
 				p2.longitude = lon_2;
@@ -1547,7 +1655,28 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 				currentStreetExclusion.polygon_points.push_back(p3);
 				currentStreetExclusion.polygon_points.push_back(p4);
 
-				forestExclusionFound = true;
+				forestExclusionFound = true;*/
+
+				polygon_winding street_winding;
+
+				p1.longitude = min(lon_1, lon_2);
+				p1.latitutde = max(lat_1, lat_2);
+
+				p2.longitude = max(lon_1, lon_2);
+				p2.latitutde = max(lat_1, lat_2);
+
+				p3.longitude = max(lon_1, lon_2);
+				p3.latitutde = min(lat_1, lat_2);
+
+				p4.longitude = min(lon_1, lon_2);
+				p4.latitutde = min(lat_1, lat_2);
+
+				street_winding.polygon_points.push_back(p1);
+				street_winding.polygon_points.push_back(p2);
+				street_winding.polygon_points.push_back(p3);
+				street_winding.polygon_points.push_back(p4);
+
+				m_StreetExclusionVector.push_back(street_winding);
 
 			}
 
@@ -1642,7 +1771,16 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 				{
 					if (item_2.find(".obj") != std::string::npos)			  m_PolygonDefinitions[poly_index] = PolygonDef::Object;
 					if (item_2.find(".fac") != std::string::npos)			  m_PolygonDefinitions[poly_index] = PolygonDef::Facade;
-					if (item_2.find(".for") != std::string::npos)		   	  m_PolygonDefinitions[poly_index] = PolygonDef::Forest;
+					if ((item_2.find(".for") != std::string::npos) 
+						//&& (item_2.find("Grass") == std::string::npos)
+						//&& (item_2.find("grass") == std::string::npos)
+						//&& (item_2.find("lib/vegetation/trees/deciduous/shrubs") == std::string::npos)
+						//&& (item_2.find("shrubs") == std::string::npos)
+						//&& (item_2.find("Shrubs") == std::string::npos)
+						//&& (item_2.find("low") == std::string::npos)
+						//&& (item_2.find("small") == std::string::npos)
+						)	// Mr. TTK likes paving Montana with grass and shrubs   	  
+																			  m_PolygonDefinitions[poly_index] = PolygonDef::Forest;
 					if (item_2.find(".bch") != std::string::npos)	    	  
 						m_PolygonDefinitions[poly_index] = PolygonDef::Beach;
 					if (item_2.find(".net") != std::string::npos)    		  m_PolygonDefinitions[poly_index] = PolygonDef::Net;
@@ -1670,7 +1808,11 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 				is_water = false;
 
 				int poly_type = -1;
+				int poly_density = 300;
 				line_stream >> poly_type;
+				line_stream >> poly_density;
+
+
 
 				dsf_polygon current_polygon;
 				polygon_winding current_winding;
@@ -1746,7 +1888,8 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 							{
 								if (in_exclusion(m_ForestExclusionVector, current_polygon) == false)
 								{
-									m_ForestVector.push_back(current_polygon);
+									if (poly_density <= 255)
+										m_ForestVector.push_back(current_polygon);
 								}						
 							}
 							else if (m_PolygonDefinitions[poly_type] == PolygonDef::Beach)			
@@ -2199,7 +2342,12 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 		}
 	}
 
-	if (forestExclusionFound == true)
+	for (auto winding : currentForestExclusionVector) 
+	{
+		m_ForestExclusionVector.push_back(winding);
+	}
+
+	/*if (forestExclusionFound == true)
 	{
 		m_ForestExclusionVector.push_back(currentForestExclusion);
 	}
@@ -2207,8 +2355,8 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 	if (streetExclusionFound == true)
 	{
 		m_StreetExclusionVector.push_back(currentStreetExclusion);
-	}
-	m_output_messages.push(m_thread_prefix + "Finished Analyzing: " + filename);
+	}*/
+	m_output_messages.push(getTime() + m_thread_prefix + "Finished Analyzing: " + filename);
 	DoEvents();
 
 	if (is_overlay == false)

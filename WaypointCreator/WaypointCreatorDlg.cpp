@@ -185,8 +185,9 @@ BOOL CWaypointCreatorDlg::OnInitDialog()
 	m_Max_Waypoints.SetWindowText(CA2CT(std::to_string(m_Max_Wayp).c_str()));
 	m_SAR_Min_Alt.SetWindowText(CA2CT(std::to_string(m_Min_Alt).c_str()));
 
-	m_MaxCores = std::thread::hardware_concurrency();
-	if (m_MaxCores > 1) m_MaxCores--;
+	m_MaxCores = std::thread::hardware_concurrency() /2;
+	//if (m_MaxCores > 1) m_MaxCores--;
+	if (m_MaxCores < 1) m_MaxCores++;
 	writeOutput("Number of cores selected for computation: " + std::to_string(m_MaxCores), m_OutputList);
 
 	//m_LatStart.SetMargins()
@@ -503,7 +504,7 @@ void CWaypointCreatorDlg::OnBnClickedBtnCreateWaypoints()
 		m_OutputList.AddString(CA2CT(path.c_str()));
 	}*/
 
-	int max_threads = 4;
+	int max_threads = m_MaxCores/2;
 
 	
 
@@ -530,7 +531,7 @@ void CWaypointCreatorDlg::OnBnClickedBtnCreateWaypoints()
 					}
 				}
 
-				Sleep(100);
+				Sleep(10);
 				MSG msg;
 				while (PeekMessage(&msg, this->GetSafeHwnd(), 0, 0, PM_REMOVE))
 				{

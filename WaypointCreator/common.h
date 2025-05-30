@@ -7,6 +7,7 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
+#include <ctime>
 
 #define HRM_INV -1000
 #define MAX_POLYGON_DEF 1000
@@ -19,8 +20,8 @@
 #define HRM_U_ANGLE_VAR 2.5
 #define HRM_U_STREET_DIST 25.0
 
-#define HRM_SAR_SECTOR_BIG 100
-#define HRM_SAR_SECTOR_FINE 100
+#define HRM_SAR_SECTOR_BIG m_WaypointData.m_Sections
+#define HRM_SAR_SECTOR_FINE m_WaypointData.m_Sections
 //#define HRM_SAR_WAYPOINTS 200
 #define HRM_SAR_URBAN_DIST 10 
 #define HRM_SAR_FOREST_DIST 1
@@ -37,6 +38,8 @@
 
 const int dem_width = 2001;
 const int dem_height = 2001;
+
+const bool validation_file = true;
 
 extern std::recursive_mutex outputListSharedMutex;
 
@@ -142,6 +145,18 @@ inline void writeOutput(std::string outputTextIn, CListBox& outputListIn)
 	//std::unique_lock<std::recursive_mutex> physics_shm_lock(outputListSharedMutex, std::defer_lock);
 	outputListIn.AddString(CA2CT(outputTextIn.c_str()));
 	outputListIn.SetTopIndex(outputListIn.GetCount() - 1);
+}
+
+inline std::string getTime()
+{
+	time_t now = time(NULL);
+	struct tm* tm_struct = localtime(&now);
+	std::string hour = std::to_string(tm_struct->tm_hour);
+	std::string min = std::to_string(tm_struct->tm_min);
+	if (hour.size() <= 1) hour = "0" + hour;
+	if (min.size() <= 1)  min = "0" + min;
+	std::string ret =  hour + ":" + min;
+	return ret;
 }
 
 inline int GetUrbanSegment(double latitude, double longitude)
