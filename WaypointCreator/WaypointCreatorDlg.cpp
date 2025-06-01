@@ -259,7 +259,7 @@ void CWaypointCreatorDlg::CheckLimits(CEdit &editBox, int &storeValue, int min, 
 		//char buffer[2000];
 		int value = atoi(text.c_str());
 
-		if ((str_is_number(text.c_str()) == true) && (value >= min) && (value <= max))
+		if ((str_is_number(text.c_str()) == true) /* && (value >= min) && (value <= max)*/)
 		{
 			if (strcmp(text.c_str(), "-") != 0)
 				storeValue = value;
@@ -450,11 +450,11 @@ void CWaypointCreatorDlg::OnEnKillfocusEditSections()
 
 void CWaypointCreatorDlg::OnBnClickedBtnCreateWaypoints()
 {
-	int latStart = m_LatStartValue;
-	int latStop = m_LatStopValue;
+	int latStart = min(m_LatStartValue, m_LatStopValue);
+	int latStop = max(m_LatStartValue, m_LatStopValue);
 
-	int lonStart = m_LonStartValue;
-	int lonStop = m_LonStopValue;
+	int lonStart = min(m_LonStartValue, m_LonStopValue);
+	int lonStop = max(m_LonStartValue, m_LonStopValue);
 
 	m_SceneryPathList.clear();
 

@@ -1263,9 +1263,9 @@ void WaypointThread::AnalyzeSARWaypoints(std::string fms_filename, bool sling_lo
 		for (int y = 0; y < m_elev_height; y++)
 		{
 			if ((mp_sar[(y * m_elev_height) + x].is_forest == true) ||
-				//(mp_sar[(y * m_elev_height) + x].is_water == true) ||
-				(mp_sar[(y * m_elev_height) + x].is_urban == true)// ||
-				//(mp_sar[(y * m_elev_height) + x].elevation < m_WaypointData.m_SARMinAlt)
+				((mp_sar[(y * m_elev_height) + x].is_water == true) && (find_water == false)) ||
+				(mp_sar[(y * m_elev_height) + x].is_urban == true) ||
+				(mp_sar[(y * m_elev_height) + x].elevation < m_WaypointData.m_SARMinAlt) //XXX
 				)
 			{
 				mp_sar[(y * m_elev_height) + x].is_usable = false;
@@ -1503,6 +1503,8 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 
 	water_defs.push_back(0); // Zero is always Water
 
+	int primitive_type = 0;
+
 	int elevation_pos = 0;
 	bool elevation_pos_found = false;
 	bool is_overlay = false;
@@ -1514,6 +1516,7 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 
 	polygon_winding currentForestExclusion;
 	std::vector<polygon_winding> currentForestExclusionVector;
+	std::vector<polygon_winding> currentStreetExclusionVector;
 	bool forestExclusionFound = false;
 
 	polygon_winding currentStreetExclusion;
@@ -1676,7 +1679,7 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 				street_winding.polygon_points.push_back(p3);
 				street_winding.polygon_points.push_back(p4);
 
-				m_StreetExclusionVector.push_back(street_winding);
+				currentStreetExclusionVector.push_back(street_winding);
 
 			}
 
@@ -1897,7 +1900,8 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 							else if (m_PolygonDefinitions[poly_type] == PolygonDef::Facade)			m_UrbanVector.push_back(current_polygon);
 							else if (m_PolygonDefinitions[poly_type] == PolygonDef::AutogenBlock)	m_UrbanVector.push_back(current_polygon);
 							else if (m_PolygonDefinitions[poly_type] == PolygonDef::AutogenString)	m_UrbanVector.push_back(current_polygon);
-							//else if (m_PolygonDefinitions[poly_type] == PolygonDef::Water)			m_WaterVector.push_back(current_polygon);
+//							else if (m_PolygonDefinitions[poly_type] == PolygonDef::Water)			
+//								m_WaterVector.push_back(current_polygon.polygon_windings[0]); // Neither Ortho4XP nor XP-12 global scenery is using this, so I removed it to avoid errors
 						}
 
 						end_segment = true;
@@ -1925,7 +1929,7 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 			is_water = false;
 
 			// Water! Check Vector
-			if ((terrain_type == 0) || (flags == 2)) //flag 2 means overlay, but no collision
+			if ((terrain_type == 0) && (flags == 2)) //flag 2 means overlay, but no collision
 			{
 				is_water = true;
 			}
@@ -1954,6 +1958,9 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 		}
 		else if (item_1.compare("BEGIN_PRIMITIVE") == 0)
 		{
+			primitive_type = 0;
+			line_stream >> primitive_type;
+
 			//is_water = false;
 			water_vertex_point = 0;
 			water_polygon.polygon_points.clear();
@@ -2000,8 +2007,16 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 					if (water_vertex_point >= 3)
 					{
 						m_WaterVector.push_back(water_polygon);
-						water_polygon.polygon_points.clear();
-						water_vertex_point = 0;
+						if (primitive_type != 1) 
+						{
+							water_polygon.polygon_points.clear();
+							water_vertex_point = 0;
+						}
+						else // triangle strip is 1
+						{
+							water_polygon.polygon_points.erase(water_polygon.polygon_points.begin()); // It's a strip, so we just remove the first
+							water_vertex_point--;
+						}
 					}
 					
 
@@ -2345,6 +2360,10 @@ void WaypointThread::AnalyzeFile(std::string filename, std::string workpath)
 	for (auto winding : currentForestExclusionVector) 
 	{
 		m_ForestExclusionVector.push_back(winding);
+	}
+	for (auto winding : currentStreetExclusionVector)
+	{
+		m_StreetExclusionVector.push_back(winding);
 	}
 
 	/*if (forestExclusionFound == true)
